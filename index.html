@@ -1,0 +1,105 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>GoblinSaltarin</title>
+    <link rel="stylesheet" href="styles.css">
+  </head>
+  <body>
+    <main class="game-shell">
+      <section class="top-panel" aria-label="Marcador">
+        <div class="brand">
+          <img src="assets/goblin-piece.png" alt="" aria-hidden="true">
+          <div>
+            <p>GOBLINAJEDREZ</p>
+            <h1>GoblinSaltarin</h1>
+          </div>
+        </div>
+
+        <div class="stats-grid">
+          <div class="stat">
+            <em aria-hidden="true">⭐</em>
+            <span>Puntos</span>
+            <strong id="score">0</strong>
+          </div>
+          <div class="stat">
+            <em aria-hidden="true">♥</em>
+            <span>Vidas</span>
+            <strong id="lives">3</strong>
+          </div>
+          <div class="stat">
+            <em aria-hidden="true">⏱</em>
+            <span>Tiempo</span>
+            <strong id="time">60</strong>
+          </div>
+          <div class="stat">
+            <em aria-hidden="true">🔥</em>
+            <span>Racha</span>
+            <strong id="streak">0</strong>
+          </div>
+          <div class="stat">
+            <em aria-hidden="true">♞</em>
+            <span>Movs</span>
+            <strong id="moves">0</strong>
+          </div>
+          <div class="stat">
+            <em aria-hidden="true">🏆</em>
+            <span>Récord</span>
+            <strong id="best">0</strong>
+          </div>
+        </div>
+      </section>
+
+      <section class="word-panel" aria-label="Palabra objetivo">
+        <div>
+          <span class="label">Palabra objetivo</span>
+          <div id="targetWord" class="target-word"></div>
+        </div>
+      </section>
+
+      <section class="board-wrap" aria-label="Tablero de letras">
+        <div id="streakPill" class="streak-pill" aria-live="polite">
+          <strong id="streakText">x0</strong>
+          <span id="streakLabel">Racha</span>
+          <i id="streakBar"></i>
+        </div>
+        <div id="board" class="board"></div>
+        <svg id="pathLayer" class="path-layer" viewBox="0 0 8 8" aria-hidden="true"></svg>
+        <div id="startOverlay" class="start-overlay">
+          <img src="assets/goblin-piece.png" alt="" aria-hidden="true">
+          <span class="intro-token" aria-hidden="true">🔤</span>
+          <div class="intro-copy">
+            <h2>GoblinSaltarin</h2>
+            <p>⏱️ Tienes <strong>60 segundos</strong> y ❤️ <strong>3 vidas</strong>.</p>
+            <p>✅ Completa una palabra y ganas <strong>+10 segundos</strong> ⏳✨.</p>
+            <p>Salta en L como el caballo y encuentra las letras en orden 🔤.</p>
+          </div>
+          <button id="startButton" type="button">✅ Jugar</button>
+        </div>
+        <div id="timeBonus" class="time-bonus" aria-live="polite"></div>
+        <div id="rewardToast" class="reward-toast" aria-live="polite"></div>
+        <div id="levelToast" class="level-toast" aria-live="polite"></div>
+        <div class="time-bar-wrap" aria-hidden="true">
+          <div id="timeBar" class="time-bar"></div>
+        </div>
+      </section>
+
+      <section class="status-panel" aria-live="polite">
+        <p id="message"></p>
+        <button id="restartButton" class="restart-button" type="button">Reiniciar</button>
+      </section>
+    </main>
+
+    <div id="endDialog" class="end-dialog" hidden>
+      <div class="dialog-box">
+        <span id="dialogBadge" class="dialog-badge">Nivel</span>
+        <h2 id="dialogTitle">Victoria</h2>
+        <p id="dialogText">Has completado la palabra.</p>
+        <button id="nextButton" class="restart-button" type="button">Siguiente palabra</button>
+      </div>
+    </div>
+
+    <script src="game.js"></script>
+  </body>
+</html>
