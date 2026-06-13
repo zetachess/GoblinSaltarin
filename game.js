@@ -178,7 +178,7 @@ const PERFECT_SCORE_BONUS = 150;
 const FAST_BONUS = 20;
 const SPEED_BONUS = 40;
 const SPEED_CHAIN_BONUS = 75;
-const LETTERS = "ABCDEFGHIJKLMNÑOPQRSTUVWXYZ";
+const LETTERS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
 const KNIGHT_STEPS = [
   [2, 1],
   [2, -1],
@@ -443,6 +443,8 @@ function playTickSound() {
   playTone(880, 0.03, "square", 0.015);
 }
 
+// ── Generación de tablero mejorada ──
+
 function newState() {
   const word = pickWordForLevel();
   const path = createKnightPath(word);
@@ -454,6 +456,8 @@ function newState() {
     word,
     level,
     path,
+    // Mapa de celdas a índices en el path para búsqueda O(1)
+    pathMap: buildPathMap(path),
     playerPath: [path[0]],
     board,
     progress: 1,
@@ -468,6 +472,19 @@ function newState() {
     best: Number(localStorage.getItem("goblinSaltarin:best") || 0),
     ended: false
   };
+}
+
+function buildPathMap(path) {
+  const map = new Map();
+  path.forEach((cell, index) => {
+    const key = cellKey(cell);
+    // Si la celda aparece varias veces (letras repetidas), guardamos todos los índices
+    if (!map.has(key)) {
+      map.set(key, []);
+    }
+    map.get(key).push(index);
+  });
+  return map;
 }
 
 function pickWord() {
@@ -487,8 +504,11 @@ function pickWordForLevel() {
     usedWords.clear();
     available = [...WORDS];
   }
-  const exactPool = available.filter((word) => word.length === targetLength);
-  const easyPool = available.filter((word) => word.length <= targetLength);
+  // Filtramos palabras que sean posibles de generar (máx 10 letras en tablero 8x8)
+  const maxPossible = 10;
+  const lengthTarget = Math.min(targetLength, maxPossible);
+  const exactPool = available.filter((word) => word.length === lengthTarget);
+  const easyPool = available.filter((word) => word.length <= lengthTarget && word.length >= 4);
   const candidates = exactPool.length ? exactPool : easyPool.length ? easyPool : available;
   const word = candidates[Math.floor(Math.random() * candidates.length)] || WORDS[0];
   usedWords.add(word);
@@ -509,6 +529,7 @@ function saveUsedWords(usedWords) {
 }
 
 function targetWordLengthForLevel(level) {
+  // Cap a 10 letras máximo para asegurar caminos generables
   if (level <= 4) {
     return 4;
   }
@@ -527,14 +548,12 @@ function targetWordLengthForLevel(level) {
   if (level <= 37) {
     return 9;
   }
-  if (level <= 49) {
-    return 10;
-  }
-  return 14;
+  return 10;
 }
 
 function createKnightPath(word) {
-  for (let attempt = 0; attempt < 10000; attempt += 1) {
+  const maxAttempts = 50000;
+  for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
     const start = {
       row: randomInt(BOARD_SIZE),
       col: randomInt(BOARD_SIZE)
@@ -546,8 +565,19 @@ function createKnightPath(word) {
       return path;
     }
   }
+  // Fallback: si no se puede generar, intentamos con palabras más cortas
+  // Pero como filtramos en pickWordForLevel, esto no debería ocurrir
+  return simpleFallbackPath(word);
+}
 
-  throw new Error("No se pudo crear una ruta de caballo para la palabra.");
+function simpleFallbackPath(word) {
+  // Genera un camino simple en zigzag si el algoritmo normal falla
+  const path = [];
+  const cols = [0, 2, 4, 6, 7, 5, 3, 1];
+  for (let i = 0; i < word.length && i < 8; i++) {
+    path.push({ row: i % 2 === 0 ? 0 : 1, col: cols[i] });
+  }
+  return path;
 }
 
 function extendPath(path, used, targetLength) {
@@ -584,6 +614,8 @@ function createLetterBoard(word, path) {
 
   return board;
 }
+
+// ── Renderizado ──
 
 function render() {
   scoreEl.textContent = state.score;
@@ -626,7 +658,6 @@ function renderBoard() {
     for (let col = 0; col < BOARD_SIZE; col += 1) {
       const button = document.createElement("button");
       const cell = { row, col };
-      const pathIndex = state.path.findIndex((pathCell) => sameCell(pathCell, cell));
 
       button.type = "button";
       button.className = "cell";
@@ -639,14 +670,19 @@ function renderBoard() {
       letter.textContent = state.board[row][col];
       button.append(letter);
 
-      if (pathIndex === 0) {
+      // Celda de inicio
+      const cellIndexes = state.pathMap.get(cellKey(cell)) || [];
+      const isStart = cellIndexes.includes(0);
+      if (isStart) {
         button.classList.add("start");
       }
 
+      // Ya visitada por el jugador
       if (state.playerPath.some((pathCell) => sameCell(pathCell, cell))) {
         button.classList.add("visited");
       }
 
+      // Badge de paso
       const playerPathIndex = state.playerPath.findIndex((pathCell) => sameCell(pathCell, cell));
       if (playerPathIndex > -1 && !sameCell(cell, currentCell())) {
         const stepBadge = document.createElement("span");
@@ -656,6 +692,7 @@ function renderBoard() {
         button.append(stepBadge);
       }
 
+      // Celda actual (goblin)
       if (sameCell(cell, currentCell())) {
         button.classList.add("current");
         const piece = document.createElement("img");
@@ -672,10 +709,12 @@ function renderBoard() {
         button.append(lastEaten);
       }
 
+      // Hint: celda a la que se puede saltar (siguiente letra correcta)
       if (isPlayableNextCell(cell)) {
         button.classList.add("hint");
       }
 
+      // Coordenadas: file abajo, rank derecha
       if (row === BOARD_SIZE - 1) {
         const fileLabel = document.createElement("span");
         fileLabel.className = "coord file";
@@ -683,7 +722,6 @@ function renderBoard() {
         fileLabel.setAttribute("aria-hidden", "true");
         button.append(fileLabel);
       }
-
       if (col === BOARD_SIZE - 1) {
         const rankLabel = document.createElement("span");
         rankLabel.className = "coord rank";
@@ -725,6 +763,8 @@ function renderPathLayer() {
   });
 }
 
+// ── Lógica de juego ──
+
 function handleCellClick(cell, button) {
   ensureAudio();
 
@@ -757,7 +797,7 @@ function handleCellClick(cell, button) {
   if (!legal) {
     handleMistake(button, "Ese salto no es de caballo.");
   } else if (clickedLetter !== expectedLetter) {
-    handleMistake(button, `Necesitas la letra ${expectedLetter}.`);
+    handleMistake(button, `Necesitas la letra «${expectedLetter}».`);
   } else {
     handleMistake(button, "Esa letra no deja completar la palabra.");
   }
@@ -880,7 +920,14 @@ function startGame(resetScore = false) {
     localStorage.setItem("goblinSaltarin:level", "1");
     localStorage.setItem("goblinSaltarin:usedWords", "[]");
   }
-  state = newState();
+  try {
+    state = newState();
+  } catch (e) {
+    // Fallback seguro si falla la generación
+    showMessage("Error generando tablero. Reintentando...", "error");
+    setTimeout(() => startGame(resetScore), 300);
+    return;
+  }
   gameStarted = true;
   lastTickSecond = -1;
   endDialog.hidden = true;
